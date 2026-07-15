@@ -49,6 +49,18 @@
     damage: "damage.webp"
   };
 
+  const SPRITE_DRAW = {
+    neutral:    { scale: 1.00, x: 0,  y: 0 },
+    low:        { scale: 0.98, x: 0,  y: 2 },
+    mid:        { scale: 1.00, x: 0,  y: 0 },
+    high:       { scale: 1.00, x: 0,  y: 0 },
+    jump:       { scale: 0.82, x: 0,  y: -18 },
+    jumpAttack: { scale: 0.82, x: 0,  y: -18 },
+    landing:    { scale: 0.98, x: 0,  y: 2 },
+    special:    { scale: 1.00, x: 0,  y: 0 },
+    damage:     { scale: 1.00, x: 0,  y: 0 }
+  };
+
   const images = {};
   let loadedImages = 0;
   const totalImages = Object.keys(IMAGE_FILES).length;
@@ -625,7 +637,15 @@
     }
 
     if (image && image.complete && image.naturalWidth > 0) {
-      ctx.drawImage(image, -250, -500, 500, 500);
+      const draw = SPRITE_DRAW[player.action] || SPRITE_DRAW.neutral;
+      const drawSize = 500 * draw.scale;
+      ctx.drawImage(
+        image,
+        -drawSize / 2 + draw.x,
+        -drawSize + draw.y,
+        drawSize,
+        drawSize
+      );
     } else {
       ctx.fillStyle = "#fff";
       ctx.fillRect(-30, -150, 60, 130);
