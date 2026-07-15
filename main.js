@@ -76,6 +76,7 @@
 
   const input = {
     up: false, down: false, left: false, right: false,
+    downLeft: false, downRight: false,
     jump: false, attack: false, special: false
   };
 
@@ -157,8 +158,8 @@
 
     const player = game.player;
 
-    if (key === "left") game.facing = -1;
-    if (key === "right") game.facing = 1;
+    if (key === "left" || key === "downLeft") game.facing = -1;
+    if (key === "right" || key === "downRight") game.facing = 1;
 
     if (key === "jump" && player.grounded && !["special", "damage"].includes(player.action)) {
       player.grounded = false;
@@ -174,7 +175,8 @@
         player.actionTimerMs = 0;
         player.attackSerial++;
       } else if (player.action === "neutral") {
-        player.action = input.up ? "high" : input.down ? "low" : "mid";
+        const lowRequested = input.down || input.downLeft || input.downRight;
+        player.action = input.up ? "high" : lowRequested ? "low" : "mid";
         player.actionTimerMs = 0;
         player.attackSerial++;
       }
@@ -324,9 +326,11 @@
     let hitCount = 0;
 
     for (const enemy of game.enemies) {
+      const enemyDirection = enemy.x < player.x ? -1 : 1;
+
       if (
         enemy.dead ||
-        enemy.side !== game.facing ||
+        enemyDirection !== game.facing ||
         enemy.lastHitSerial === player.attackSerial
       ) {
         continue;
@@ -368,6 +372,21 @@
 
     player.actionTimerMs += dt;
     player.invulnerableMs = Math.max(0, player.invulnerableMs - dt);
+
+    // Holding left/right or a diagonal moves the heroine slightly.
+    // Movement is limited to the center area to preserve the two-sided defense style.
+    if (player.magicTimerMs <= 0 && player.action !== "damage") {
+      const moveLeft = input.left || input.downLeft;
+      const moveRight = input.right || input.downRight;
+      const moveDirection = (moveRight ? 1 : 0) - (moveLeft ? 1 : 0);
+
+      if (moveDirection !== 0) {
+        game.facing = moveDirection;
+        const moveSpeed = player.grounded ? 112 : 70;
+        player.x += moveDirection * moveSpeed * dt / 1000;
+        player.x = Math.max(W * 0.32, Math.min(W * 0.68, player.x));
+      }
+    }
 
     if (!player.grounded) {
       player.vy += 2150 * dt / 1000;

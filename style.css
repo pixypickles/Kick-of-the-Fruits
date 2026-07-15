@@ -151,3 +151,44 @@ button:active, button.active { transform: scale(.95); filter: brightness(1.15); 
  #difficultyOverlay .menu>p{display:none}
  #difficultyOverlay .menu button{padding:5px 8px;margin:2px 0}
 }
+
+
+/* v1.9: diagonal controls and clearer battlefield */
+.dpad {
+  width: 33%;
+  aspect-ratio: 1.28;
+}
+.dpad button {
+  width: 27%;
+  height: 34%;
+  background: rgba(115,84,203,.38);
+  border-color: rgba(255,255,255,.45);
+}
+.dpad .up {
+  left: 36.5%;
+  top: 0;
+}
+.dpad .left {
+  left: 0;
+  top: 33%;
+}
+.dpad .right {
+  right: 0;
+  top: 33%;
+}
+.dpad .down-left {
+  left: 5%;
+  bottom: 0;
+}
+.dpad .down {
+  left: 36.5%;
+  bottom: 0;
+}
+.dpad .down-right {
+  right: 5%;
+  bottom: 0;
+}
+.dpad button:active,
+.dpad button.active {
+  background: rgba(115,84,203,.78);
+}
