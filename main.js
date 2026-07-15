@@ -171,7 +171,7 @@
       player.magicTimerMs = 4200;
       player.action = "special";
       player.actionTimerMs = 0;
-      createBurst(W / 2, H / 2, 35);
+      createBurst(W / 2, H / 2, 90);
       updateHud();
     }
   }
@@ -305,9 +305,7 @@
     if (!attackIsActive()) return;
 
     const player = game.player;
-    const height = attackHeight();
-    const attackY = HEIGHTS[height].hitY;
-    const horizontalRange = player.action === "jumpAttack" ? 335 : 285;
+    const horizontalRange = player.action === "jumpAttack" ? 345 : 285;
     let hitCount = 0;
 
     for (const enemy of game.enemies) {
@@ -320,14 +318,26 @@
       }
 
       const horizontalMatch = Math.abs(enemy.x - player.x) <= horizontalRange;
-      const verticalMatch = Math.abs(enemy.hitY - attackY) <= 75;
+
+      let verticalMatch;
+
+      if (player.action === "jumpAttack") {
+        // During a jump kick, the foot travels through multiple lanes.
+        // Any enemy whose visible hit point is close to the current foot height can be hit.
+        const airKickY = player.y - 185;
+        verticalMatch = Math.abs(enemy.hitY - airKickY) <= 115;
+      } else {
+        const height = attackHeight();
+        const attackY = HEIGHTS[height].hitY;
+        verticalMatch = Math.abs(enemy.hitY - attackY) <= 75;
+      }
 
       if (horizontalMatch && verticalMatch) {
         enemy.lastHitSerial = player.attackSerial;
         defeatEnemy(enemy, true);
         hitCount++;
 
-        const maxHits = player.action === "jumpAttack" ? 4 : 2;
+        const maxHits = player.action === "jumpAttack" ? 5 : 2;
         if (hitCount >= maxHits) break;
       }
     }
@@ -377,7 +387,7 @@
         }
 
         if (Math.random() < 0.45) {
-          createBurst(W / 2, H / 2, 4);
+          createBurst(W / 2, H / 2, 12);
         }
       }
 
@@ -597,7 +607,7 @@
     }
 
     if (image && image.complete && image.naturalWidth > 0) {
-      ctx.drawImage(image, -170, -310, 340, 340);
+      ctx.drawImage(image, -200, -360, 400, 400);
     } else {
       ctx.fillStyle = "#fff";
       ctx.fillRect(-30, -150, 60, 130);
@@ -630,13 +640,98 @@
     }
 
     if (game.player.magicTimerMs > 0) {
-      ctx.fillStyle = "rgba(255,255,255,.50)";
+      const t = game.player.magicTimerMs;
+      const pulse = 0.5 + 0.5 * Math.sin(game.elapsedMs * 0.018);
+
+      // Darken the field so the spell reads clearly.
+      ctx.fillStyle = "rgba(43,20,82,.42)";
       ctx.fillRect(0, 0, W, H);
 
-      ctx.fillStyle = "#8d42d8";
-      ctx.font = "900 52px sans-serif";
+      // Large rotating magic circle.
+      ctx.save();
+      ctx.translate(game.player.x, game.player.y - 120);
+      ctx.rotate(game.elapsedMs * 0.0025);
+      ctx.strokeStyle = `rgba(132,230,255,${0.55 + pulse * 0.35})`;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(0, 0, 125 + pulse * 18, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(255,112,220,${0.45 + pulse * 0.35})`;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        const x1 = Math.cos(a) * 55;
+        const y1 = Math.sin(a) * 55;
+        const x2 = Math.cos(a + Math.PI / 3) * 112;
+        const y2 = Math.sin(a + Math.PI / 3) * 112;
+        if (i === 0) ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      // Rainbow shockwaves.
+      for (let i = 0; i < 4; i++) {
+        const radius = 120 + ((game.elapsedMs * 0.35 + i * 150) % 520);
+        ctx.strokeStyle = `hsla(${(game.elapsedMs * 0.12 + i * 80) % 360},95%,68%,${0.42 - radius / 1500})`;
+        ctx.lineWidth = 16 - i * 2;
+        ctx.beginPath();
+        ctx.arc(game.player.x, game.player.y - 120, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Falling stars and crystal streaks.
+      for (let i = 0; i < 18; i++) {
+        const sx = (i * 83 + game.elapsedMs * 0.42) % (W + 180) - 90;
+        const sy = (i * 137 + game.elapsedMs * 0.65) % (H + 220) - 110;
+
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(-0.75);
+        ctx.fillStyle = `hsla(${(i * 47 + game.elapsedMs * 0.15) % 360},95%,70%,.86)`;
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(6, -5);
+        ctx.lineTo(20, 0);
+        ctx.lineTo(6, 5);
+        ctx.lineTo(0, 18);
+        ctx.lineTo(-6, 5);
+        ctx.lineTo(-20, 0);
+        ctx.lineTo(-6, -5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,255,255,.42)";
+        ctx.fillRect(-85, -3, 70, 6);
+        ctx.restore();
+      }
+
+      // Bright center flash.
+      const glow = ctx.createRadialGradient(
+        game.player.x,
+        game.player.y - 120,
+        10,
+        game.player.x,
+        game.player.y - 120,
+        340
+      );
+      glow.addColorStop(0, "rgba(255,255,255,.95)");
+      glow.addColorStop(.22, "rgba(255,218,110,.65)");
+      glow.addColorStop(.48, "rgba(255,112,220,.36)");
+      glow.addColorStop(1, "rgba(120,210,255,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "900 58px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("RAINBOW MAGIC!", W / 2, 90);
+      ctx.shadowColor = "#7a3bd6";
+      ctx.shadowBlur = 18;
+      ctx.fillText("RAINBOW FRUIT STORM!", W / 2, 92);
+      ctx.shadowBlur = 0;
     }
 
     loadingTextEl.textContent =
