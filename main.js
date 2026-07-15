@@ -43,7 +43,10 @@
     jump: "jump.webp",
     jumpAttackStart: "jump_attack_start.webp",
     jumpAttackHit: "jump_attack_hit.webp",
-    landing: "landing.webp"
+    landing: "landing.webp",
+    magicCharge: "magic_charge.webp",
+    magicCast: "magic_cast.webp",
+    damage: "damage.webp"
   };
 
   const images = {};
@@ -145,7 +148,7 @@
     if (key === "left") game.facing = -1;
     if (key === "right") game.facing = 1;
 
-    if (key === "jump" && player.grounded && player.action !== "special") {
+    if (key === "jump" && player.grounded && !["special", "damage"].includes(player.action)) {
       player.grounded = false;
       player.vy = input.up ? -1080 : -860;
       player.action = "jump";
@@ -153,7 +156,7 @@
       return;
     }
 
-    if (key === "attack" && player.action !== "special") {
+    if (key === "attack" && !["special", "damage"].includes(player.action)) {
       if (!player.grounded) {
         player.action = "jumpAttack";
         player.actionTimerMs = 0;
@@ -377,6 +380,11 @@
       player.actionTimerMs = 0;
     }
 
+    if (player.action === "damage" && player.actionTimerMs > 300) {
+      player.action = player.grounded ? "neutral" : "jump";
+      player.actionTimerMs = 0;
+    }
+
     if (player.magicTimerMs > 0) {
       player.magicTimerMs -= dt;
       player.action = "special";
@@ -422,6 +430,8 @@
           defeatEnemy(enemy, false);
         } else if (game.graceMs <= 0 && player.invulnerableMs <= 0) {
           player.invulnerableMs = game.difficulty.invulnMs;
+          player.action = "damage";
+          player.actionTimerMs = 0;
           game.hp--;
           enemy.dead = true;
 
@@ -568,6 +578,14 @@
         : images.jumpAttackHit;
     }
 
+    if (player.action === "special") {
+      return player.actionTimerMs < 650
+        ? images.magicCharge
+        : images.magicCast;
+    }
+
+    if (player.action === "damage") return images.damage;
+
     if (player.action === "landing") return images.landing;
 
     if (player.action === "low") {
@@ -607,7 +625,7 @@
     }
 
     if (image && image.complete && image.naturalWidth > 0) {
-      ctx.drawImage(image, -210, -420, 420, 420);
+      ctx.drawImage(image, -230, -460, 460, 460);
     } else {
       ctx.fillStyle = "#fff";
       ctx.fillRect(-30, -150, 60, 130);
