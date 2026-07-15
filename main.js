@@ -625,7 +625,7 @@
     }
 
     if (image && image.complete && image.naturalWidth > 0) {
-      ctx.drawImage(image, -245, -490, 490, 490);
+      ctx.drawImage(image, -250, -500, 500, 500);
     } else {
       ctx.fillStyle = "#fff";
       ctx.fillRect(-30, -150, 60, 130);
