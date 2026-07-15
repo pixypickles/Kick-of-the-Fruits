@@ -571,7 +571,7 @@
     if (player.action === "landing") return images.landing;
 
     if (player.action === "low") {
-      return player.actionTimerMs < 120 || player.actionTimerMs > 260
+      return player.actionTimerMs < 145 || player.actionTimerMs > 275
         ? images.lowStart
         : images.lowHit;
     }
@@ -607,7 +607,7 @@
     }
 
     if (image && image.complete && image.naturalWidth > 0) {
-      ctx.drawImage(image, -200, -360, 400, 400);
+      ctx.drawImage(image, -210, -420, 420, 420);
     } else {
       ctx.fillStyle = "#fff";
       ctx.fillRect(-30, -150, 60, 130);

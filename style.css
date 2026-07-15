@@ -136,3 +136,18 @@ button:active, button.active { transform: scale(.95); filter: brightness(1.15); 
   .menu { padding: 16px 12px; }
   .titlebar p { display: none; }
 }
+
+/* v1.3: compact mode selector */
+#difficultyOverlay{position:fixed;inset:0;overflow:hidden;padding:8px}
+#difficultyOverlay .menu{width:min(94vw,520px);max-height:94dvh;overflow:hidden;padding:clamp(8px,2vh,16px)}
+#difficultyOverlay .menu h2{margin:0 0 3px;font-size:clamp(1rem,4vw,1.6rem)}
+#difficultyOverlay .menu>p{margin:0 0 4px;font-size:clamp(.72rem,2.8vw,.95rem)}
+#difficultyOverlay .menu button{margin:3px 0;padding:clamp(6px,1.2vh,10px)}
+#difficultyOverlay .menu button strong{font-size:clamp(.9rem,3.6vw,1.15rem)}
+#difficultyOverlay .menu button span{font-size:clamp(.64rem,2.5vw,.85rem)}
+#difficultyOverlay .menu small{display:block;margin-top:3px;font-size:.68rem}
+@media(max-height:620px),(max-width:360px){
+ #difficultyOverlay .menu{padding:7px 9px}
+ #difficultyOverlay .menu>p{display:none}
+ #difficultyOverlay .menu button{padding:5px 8px;margin:2px 0}
+}
