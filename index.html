@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Kick of the Fruits</title><link rel="stylesheet" href="style.css"></head>
+<body><main id="app"><header><h1>KICK OF THE FRUITS</h1><p>フルーツモンスターを蹴散らせ！</p></header>
+<section id="hud"><div>HP <span id="hp">5</span></div><div>SCORE <span id="score">0</span></div><div>MAGIC <span id="specialText">0%</span></div></section><div id="specialBar"><div id="specialFill"></div></div>
+<section id="gameWrap"><canvas id="game" width="1280" height="720"></canvas>
+<div id="controls"><div class="dpad"><button class="up" data-input="up">▲</button><button class="left" data-input="left">◀</button><button class="right" data-input="right">▶</button><button class="down" data-input="down">▼</button></div><div class="actions"><button class="special" data-input="special">MAGIC</button><button class="jump" data-input="jump">JUMP</button><button class="attack" data-input="attack">KICK</button></div></div>
+<div id="difficultyOverlay"><div class="difficulty-panel"><h2>KICK OF THE FRUITS</h2><p>難易度を選んでください</p><button data-difficulty="easy">EASY<br><small>HP8・敵がゆっくり</small></button><button data-difficulty="normal">NORMAL<br><small>標準</small></button><button data-difficulty="hard">HARD<br><small>敵が速い</small></button><p id="loadingHint"></p></div></div>
+<div id="overlay" class="hidden"><div><h2>GAME OVER</h2><p id="finalScore"></p><button id="restart">RESTART</button></div></div></section></main><script src="main.js"></script></body></html>
