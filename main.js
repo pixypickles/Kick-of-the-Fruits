@@ -34,7 +34,7 @@
 
   const IMAGE_FILES = {
     neutral: "neutral.webp",
-    midStart: "high_kick_start.webp",
+    midStart: "mid_kick_start.webp",
     midHit: "mid_kick_hit.webp",
     lowStart: "low_kick_start.webp",
     lowHit: "low_kick_hit.webp",
