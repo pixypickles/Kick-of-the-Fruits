@@ -1,22 +1,664 @@
-(()=>{"use strict";const c=document.getElementById("game"),x=c.getContext("2d"),W=c.width,H=c.height,G=610;const hp=document.getElementById("hp"),sc=document.getElementById("score"),sp=document.getElementById("specialText"),sf=document.getElementById("specialFill"),dif=document.getElementById("difficultyOverlay"),hint=document.getElementById("loadingHint"),ov=document.getElementById("overlay"),fs=document.getElementById("finalScore");
-const D={easy:{hp:8,s:.8,p:1.3,g:20,i:1500},normal:{hp:5,s:1,p:1,g:14,i:1200},hard:{hp:3,s:1.22,p:.78,g:10,i:900}},L={1:{y:555,b:625},2:{y:365,b:455},3:{y:265,b:350},4:{y:170,b:255}};
-const F={neutral:"neutral.webp",midStart:"high_kick_start.webp",midHit:"mid_kick_hit.webp",lowStart:"low_kick_start.webp",lowHit:"low_kick_hit.webp",highStart:"mid_kick_start.webp",highHit:"high_kick_hit.webp",jump:"jump.webp",jumpAttackStart:"jump_attack_start.webp",jumpAttackHit:"jump_attack_hit.webp",landing:"landing.webp"},I={};let rd=0;for(const[k,f]of Object.entries(F)){const im=new Image();im.onload=()=>rd++;im.onerror=()=>rd++;im.src=f;I[k]=im}
-let S={started:false,running:false,enemies:[],parts:[],difficulty:D.normal,difficultyName:"normal",score:0,hp:5,special:0,elapsed:0,facing:1,player:{x:W/2,y:G,vy:0,grounded:true,action:"neutral",t:0,serial:0,inv:0,magic:0}},inp={};
-function hud(){hp.textContent=S.hp;sc.textContent=S.score;sp.textContent=Math.floor(S.special)+"%";sf.style.width=S.special+"%"}function reset(n){const d=D[n];S={started:true,running:true,enemies:[],parts:[],difficulty:d,difficultyName:n,score:0,hp:d.hp,special:0,elapsed:0,spawn:2200,grace:3000,facing:1,player:{x:W/2,y:G,vy:0,grounded:true,action:"neutral",t:0,serial:0,inv:0,magic:0}};dif.classList.add("hidden");ov.classList.add("hidden");hud()}
-document.querySelectorAll("[data-difficulty]").forEach(b=>b.onclick=()=>reset(b.dataset.difficulty));document.getElementById("restart").onclick=()=>reset(S.difficultyName);
-function press(k){if(!S.running)return;const p=S.player;if(k==="left")S.facing=-1;if(k==="right")S.facing=1;if(k==="jump"&&p.grounded){p.grounded=false;p.vy=inp.up?-1080:-860;p.action="jump";p.t=0}else if(k==="attack"){if(!p.grounded){p.action="jumpAttack";p.t=0;p.serial++}else if(p.action==="neutral"){p.action=inp.up?"high":inp.down?"low":"mid";p.t=0;p.serial++}}else if(k==="special"&&S.special>=100){S.special=0;p.magic=4200;p.action="special";p.t=0;burst(W/2,H/2,35);hud()}}
-document.querySelectorAll("[data-input]").forEach(b=>{const k=b.dataset.input;b.onpointerdown=e=>{e.preventDefault();if(!inp[k])press(k);inp[k]=1};b.onpointerup=b.onpointercancel=b.onpointerleave=e=>{inp[k]=0}});
-function spawn(){const side=Math.random()<.5?-1:1,r=Math.random();let e;if(r<.2)e={t:"strawberry",h:1,v:115,q:120,col:"#ff477e"};else if(r<.4)e={t:"melon",h:1,v:92,q:145,col:"#9fe870",bounce:1,min:1,max:2,ph:Math.random()*6.28};else if(r<.6)e={t:"grape",h:2,v:102,q:155,col:"#9a5de2"};else if(r<.77)e={t:"lemon",h:2,v:112,q:165,col:"#ffd84b"};else if(r<.92)e={t:"pineapple",h:3,v:108,q:190,col:"#ffb739"};else e={t:"watermelon",h:4,v:103,q:240,col:"#56c96f"};e.v*=S.difficulty.s;const l=L[e.h];S.enemies.push({...e,side,x:side<0?-90:W+90,y:l.b,hy:l.y,dead:0,last:-1})}
-function burst(a,b,n){for(let i=0;i<n;i++)S.parts.push({x:a,y:b,vx:(Math.random()-.5)*450,vy:-Math.random()*380,life:500+Math.random()*600,size:3+Math.random()*7,h:Math.random()*360})}
-function ah(){const a=S.player.action;return a==="low"?1:a==="mid"?2:a==="high"?3:a==="jumpAttack"?4:0}function active(){const p=S.player;return["low","mid","high"].includes(p.action)?p.t>110&&p.t<250:p.action==="jumpAttack"?p.t>80&&p.t<320:false}
-function defeat(e,g){if(e.dead)return;e.dead=1;S.score+=e.q;if(g)S.special=Math.min(100,S.special+S.difficulty.g);burst(e.x,e.y-50,12);hud()}
-function update(dt){if(!S.running)return;S.elapsed+=dt;S.grace=Math.max(0,(S.grace||0)-dt);const p=S.player;p.t+=dt;p.inv=Math.max(0,p.inv-dt);if(!p.grounded){p.vy+=2150*dt/1000;p.y+=p.vy*dt/1000;if(p.y>=G){p.y=G;p.vy=0;p.grounded=1;p.action="landing";p.t=0}}if(["low","mid","high"].includes(p.action)&&p.t>390){p.action="neutral";p.t=0}if(p.action==="landing"&&p.t>170){p.action="neutral";p.t=0}if(p.magic>0){p.magic-=dt;p.action="special";if(p.t>250){for(const e of S.enemies)if(!e.dead)defeat(e,false);if(Math.random()<.45)burst(W/2,H/2,4)}if(p.magic<=0){p.action="neutral";p.t=0}}
-if(active()){const h=ah(),yy=L[h].y;let n=0;for(const e of S.enemies){if(e.dead||e.side!==S.facing||e.last===p.serial)continue;if(Math.abs(e.x-p.x)<=(p.action==="jumpAttack"?335:285)&&Math.abs(e.hy-yy)<75){e.last=p.serial;defeat(e,true);if(++n>=(p.action==="jumpAttack"?4:2))break}}}
-S.spawn-=dt;if(S.spawn<=0){spawn();S.spawn=(Math.max(700,1350-S.elapsed*.010)+Math.random()*480)*S.difficulty.p}
-for(const e of S.enemies){if(e.dead)continue;if(e.bounce){e.ph+=.0038*dt;const w=(Math.sin(e.ph)+1)/2,a=L[e.min],b=L[e.max];e.hy=a.y+(b.y-a.y)*w;e.y=a.b+(b.b-a.b)*w;e.h=w<.5?1:2}e.x+=-e.side*e.v*dt/1000;if(Math.abs(e.x-p.x)<48){if(p.magic>0)defeat(e,false);else if((S.grace||0)<=0&&p.inv<=0){p.inv=S.difficulty.i;S.hp--;e.dead=1;burst(p.x,p.y-100,14);hud();if(S.hp<=0){S.running=0;fs.textContent="SCORE "+S.score;ov.classList.remove("hidden")}}}}
-S.enemies=S.enemies.filter(e=>!e.dead&&e.x>-180&&e.x<W+180);for(const q of S.parts){q.life-=dt;q.vy+=650*dt/1000;q.x+=q.vx*dt/1000;q.y+=q.vy*dt/1000}S.parts=S.parts.filter(q=>q.life>0)}
-function bg(){const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,"#94e1ff");g.addColorStop(.58,"#eefcff");g.addColorStop(.59,"#a4e77e");g.addColorStop(1,"#4eb96c");x.fillStyle=g;x.fillRect(0,0,W,H);x.fillStyle="#fff9";for(let i=0;i<7;i++){x.beginPath();x.arc(120+i*190,120+(i%2)*45,55,0,6.28);x.fill()}x.fillStyle="#c9a9ff";x.fillRect(540,170,200,240)}
-function enemy(e){x.save();x.translate(e.x,e.y);x.scale(e.side*.88,.88);x.fillStyle=e.col;x.strokeStyle="#53305c88";x.lineWidth=5;if(e.t==="strawberry"){x.beginPath();x.arc(0,-48,34,0,6.28);x.fill();x.stroke()}else if(e.t==="melon"||e.t==="watermelon"){x.beginPath();x.arc(0,-48,e.t==="melon"?40:44,0,6.28);x.fill();x.stroke()}else if(e.t==="grape"){for(let r=0;r<3;r++)for(let c=0;c<3-r;c++){x.beginPath();x.arc((c-(2-r)/2)*26,-90+r*26,16,0,6.28);x.fill();x.stroke()}}else if(e.t==="lemon"){x.beginPath();x.ellipse(0,-52,44,30,0,0,6.28);x.fill();x.stroke()}else{x.beginPath();x.ellipse(0,-55,40,48,0,0,6.28);x.fill();x.stroke()}x.fillStyle="#3a244d";x.beginPath();x.arc(-13,-55,6,0,6.28);x.arc(13,-55,6,0,6.28);x.fill();x.restore()}
-function pim(){const p=S.player;if(p.action==="jump")return I.jump;if(p.action==="jumpAttack")return p.t<120?I.jumpAttackStart:I.jumpAttackHit;if(p.action==="landing")return I.landing;if(p.action==="low")return p.t<120||p.t>260?I.lowStart:I.lowHit;if(p.action==="mid")return p.t<105||p.t>250?I.midStart:I.midHit;if(p.action==="high")return p.t<150||p.t>295?I.highStart:I.highHit;return I.neutral}
-function draw(){bg();for(const e of S.enemies)enemy(e);const p=S.player,im=pim();x.save();x.translate(p.x,p.y);x.scale(S.facing,1);if(p.inv>0&&Math.floor(p.inv/80)%2===0)x.globalAlpha=.35;if(im&&im.complete&&im.naturalWidth)x.drawImage(im,-170,-310,340,340);x.restore();for(const q of S.parts){x.fillStyle=`hsl(${q.h} 90% 65%)`;x.beginPath();x.arc(q.x,q.y,q.size,0,6.28);x.fill()}if((S.grace||0)>0){x.fillStyle="rgba(255,255,255,.88)";x.font="900 46px sans-serif";x.textAlign="center";x.fillText("READY!",W/2,95)}if(p.magic>0){x.fillStyle="#fff9";x.fillRect(0,0,W,H);x.fillStyle="#8d42d8";x.font="900 52px sans-serif";x.textAlign="center";x.fillText("RAINBOW MAGIC!",W/2,90)}hint.textContent=rd<11?`キャラクターを読み込み中 ${rd}/11`:"準備完了"}
-let last=performance.now();function loop(n){const dt=Math.min(34,n-last);last=n;if(S.started)update(dt);draw();requestAnimationFrame(loop)}hud();requestAnimationFrame(loop)})();
+
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const hpEl = document.getElementById("hp");
+  const scoreEl = document.getElementById("score");
+  const magicTextEl = document.getElementById("magicText");
+  const magicFillEl = document.getElementById("magicFill");
+  const difficultyOverlay = document.getElementById("difficultyOverlay");
+  const gameOverOverlay = document.getElementById("gameOverOverlay");
+  const finalScoreEl = document.getElementById("finalScore");
+  const loadingTextEl = document.getElementById("loadingText");
+  const restartButton = document.getElementById("restart");
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const GROUND_Y = 610;
+
+  const DIFFICULTIES = {
+    easy:   { hp: 8, enemySpeed: 0.82, spawnScale: 1.28, magicGain: 20, invulnMs: 1500 },
+    normal: { hp: 5, enemySpeed: 1.00, spawnScale: 1.00, magicGain: 14, invulnMs: 1200 },
+    hard:   { hp: 3, enemySpeed: 1.22, spawnScale: 0.78, magicGain: 10, invulnMs: 900 }
+  };
+
+  const HEIGHTS = {
+    1: { hitY: 555, baseY: 625 },
+    2: { hitY: 365, baseY: 455 },
+    3: { hitY: 265, baseY: 350 },
+    4: { hitY: 170, baseY: 255 }
+  };
+
+  const IMAGE_FILES = {
+    neutral: "neutral.webp",
+    midStart: "high_kick_start.webp",
+    midHit: "mid_kick_hit.webp",
+    lowStart: "low_kick_start.webp",
+    lowHit: "low_kick_hit.webp",
+    highStart: "mid_kick_start.webp",
+    highHit: "high_kick_hit.webp",
+    jump: "jump.webp",
+    jumpAttackStart: "jump_attack_start.webp",
+    jumpAttackHit: "jump_attack_hit.webp",
+    landing: "landing.webp"
+  };
+
+  const images = {};
+  let loadedImages = 0;
+  const totalImages = Object.keys(IMAGE_FILES).length;
+
+  for (const [key, file] of Object.entries(IMAGE_FILES)) {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => loadedImages++;
+    image.onerror = () => loadedImages++;
+    image.src = new URL(file, document.baseURI).href;
+    images[key] = image;
+  }
+
+  const input = {
+    up: false, down: false, left: false, right: false,
+    jump: false, attack: false, special: false
+  };
+
+  let game = createMenuState();
+
+  function createMenuState() {
+    return {
+      started: false,
+      running: false,
+      difficultyName: "normal",
+      difficulty: DIFFICULTIES.normal,
+      hp: 5,
+      score: 0,
+      magic: 0,
+      elapsedMs: 0,
+      spawnTimerMs: 2000,
+      graceMs: 3000,
+      facing: 1,
+      enemies: [],
+      particles: [],
+      player: createPlayer()
+    };
+  }
+
+  function createPlayer() {
+    return {
+      x: W / 2,
+      y: GROUND_Y,
+      vy: 0,
+      grounded: true,
+      action: "neutral",
+      actionTimerMs: 0,
+      attackSerial: 0,
+      invulnerableMs: 0,
+      magicTimerMs: 0
+    };
+  }
+
+  function startGame(difficultyName) {
+    const difficulty = DIFFICULTIES[difficultyName];
+
+    game = {
+      started: true,
+      running: true,
+      difficultyName,
+      difficulty,
+      hp: difficulty.hp,
+      score: 0,
+      magic: 0,
+      elapsedMs: 0,
+      spawnTimerMs: 2200,
+      graceMs: 3000,
+      facing: 1,
+      enemies: [],
+      particles: [],
+      player: createPlayer()
+    };
+
+    difficultyOverlay.classList.add("hidden");
+    gameOverOverlay.classList.add("hidden");
+    updateHud();
+  }
+
+  function updateHud() {
+    hpEl.textContent = game.hp;
+    scoreEl.textContent = game.score;
+    magicTextEl.textContent = `${Math.floor(game.magic)}%`;
+    magicFillEl.style.width = `${game.magic}%`;
+  }
+
+  document.querySelectorAll("[data-difficulty]").forEach(button => {
+    button.addEventListener("click", () => startGame(button.dataset.difficulty));
+  });
+
+  restartButton.addEventListener("click", () => startGame(game.difficultyName));
+
+  function handlePress(key) {
+    if (!game.running) return;
+
+    const player = game.player;
+
+    if (key === "left") game.facing = -1;
+    if (key === "right") game.facing = 1;
+
+    if (key === "jump" && player.grounded && player.action !== "special") {
+      player.grounded = false;
+      player.vy = input.up ? -1080 : -860;
+      player.action = "jump";
+      player.actionTimerMs = 0;
+      return;
+    }
+
+    if (key === "attack" && player.action !== "special") {
+      if (!player.grounded) {
+        player.action = "jumpAttack";
+        player.actionTimerMs = 0;
+        player.attackSerial++;
+      } else if (player.action === "neutral") {
+        player.action = input.up ? "high" : input.down ? "low" : "mid";
+        player.actionTimerMs = 0;
+        player.attackSerial++;
+      }
+      return;
+    }
+
+    if (key === "special" && game.magic >= 100 && player.magicTimerMs <= 0) {
+      game.magic = 0;
+      player.magicTimerMs = 4200;
+      player.action = "special";
+      player.actionTimerMs = 0;
+      createBurst(W / 2, H / 2, 35);
+      updateHud();
+    }
+  }
+
+  document.querySelectorAll("[data-input]").forEach(button => {
+    const key = button.dataset.input;
+
+    const press = event => {
+      event.preventDefault();
+      if (!input[key]) handlePress(key);
+      input[key] = true;
+      button.classList.add("active");
+    };
+
+    const release = event => {
+      event.preventDefault();
+      input[key] = false;
+      button.classList.remove("active");
+    };
+
+    button.addEventListener("pointerdown", press);
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("pointerleave", release);
+  });
+
+  function spawnEnemy() {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const roll = Math.random();
+
+    let enemy;
+
+    if (roll < 0.20) {
+      enemy = { type: "strawberry", height: 1, speed: 115, score: 120, color: "#ff477e" };
+    } else if (roll < 0.40) {
+      enemy = {
+        type: "melon", height: 1, speed: 92, score: 145, color: "#9fe870",
+        bouncing: true, minHeight: 1, maxHeight: 2,
+        phase: Math.random() * Math.PI * 2
+      };
+    } else if (roll < 0.60) {
+      enemy = { type: "grape", height: 2, speed: 102, score: 155, color: "#9a5de2" };
+    } else if (roll < 0.77) {
+      enemy = { type: "lemon", height: 2, speed: 112, score: 165, color: "#ffd84b" };
+    } else if (roll < 0.92) {
+      enemy = { type: "pineapple", height: 3, speed: 108, score: 190, color: "#ffb739" };
+    } else {
+      enemy = { type: "watermelon", height: 4, speed: 103, score: 240, color: "#56c96f" };
+    }
+
+    enemy.speed *= game.difficulty.enemySpeed;
+
+    const lane = HEIGHTS[enemy.height];
+
+    game.enemies.push({
+      ...enemy,
+      side,
+      x: side < 0 ? -90 : W + 90,
+      y: lane.baseY,
+      hitY: lane.hitY,
+      dead: false,
+      lastHitSerial: -1
+    });
+  }
+
+  function updateBouncingEnemy(enemy, dt) {
+    if (!enemy.bouncing) return;
+
+    enemy.phase += 0.0038 * dt;
+    const wave = (Math.sin(enemy.phase) + 1) / 2;
+
+    const low = HEIGHTS[enemy.minHeight];
+    const high = HEIGHTS[enemy.maxHeight];
+
+    enemy.hitY = low.hitY + (high.hitY - low.hitY) * wave;
+    enemy.y = low.baseY + (high.baseY - low.baseY) * wave;
+    enemy.height = wave < 0.5 ? 1 : 2;
+  }
+
+  function attackHeight() {
+    const action = game.player.action;
+    if (action === "low") return 1;
+    if (action === "mid") return 2;
+    if (action === "high") return 3;
+    if (action === "jumpAttack") return 4;
+    return 0;
+  }
+
+  function attackIsActive() {
+    const player = game.player;
+
+    if (["low", "mid", "high"].includes(player.action)) {
+      return player.actionTimerMs >= 110 && player.actionTimerMs <= 250;
+    }
+
+    if (player.action === "jumpAttack") {
+      return player.actionTimerMs >= 80 && player.actionTimerMs <= 320;
+    }
+
+    return false;
+  }
+
+  function defeatEnemy(enemy, grantMagic) {
+    if (enemy.dead) return;
+
+    enemy.dead = true;
+    game.score += enemy.score;
+
+    if (grantMagic) {
+      game.magic = Math.min(100, game.magic + game.difficulty.magicGain);
+    }
+
+    createBurst(enemy.x, enemy.y - 50, 12);
+    updateHud();
+  }
+
+  function createBurst(x, y, count) {
+    for (let i = 0; i < count; i++) {
+      game.particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 450,
+        vy: -Math.random() * 380,
+        lifeMs: 500 + Math.random() * 600,
+        size: 3 + Math.random() * 7,
+        hue: Math.random() * 360
+      });
+    }
+  }
+
+  function testAttackHits() {
+    if (!attackIsActive()) return;
+
+    const player = game.player;
+    const height = attackHeight();
+    const attackY = HEIGHTS[height].hitY;
+    const horizontalRange = player.action === "jumpAttack" ? 335 : 285;
+    let hitCount = 0;
+
+    for (const enemy of game.enemies) {
+      if (
+        enemy.dead ||
+        enemy.side !== game.facing ||
+        enemy.lastHitSerial === player.attackSerial
+      ) {
+        continue;
+      }
+
+      const horizontalMatch = Math.abs(enemy.x - player.x) <= horizontalRange;
+      const verticalMatch = Math.abs(enemy.hitY - attackY) <= 75;
+
+      if (horizontalMatch && verticalMatch) {
+        enemy.lastHitSerial = player.attackSerial;
+        defeatEnemy(enemy, true);
+        hitCount++;
+
+        const maxHits = player.action === "jumpAttack" ? 4 : 2;
+        if (hitCount >= maxHits) break;
+      }
+    }
+  }
+
+  function update(dt) {
+    if (!game.running) return;
+
+    const player = game.player;
+
+    game.elapsedMs += dt;
+    game.graceMs = Math.max(0, game.graceMs - dt);
+
+    player.actionTimerMs += dt;
+    player.invulnerableMs = Math.max(0, player.invulnerableMs - dt);
+
+    if (!player.grounded) {
+      player.vy += 2150 * dt / 1000;
+      player.y += player.vy * dt / 1000;
+
+      if (player.y >= GROUND_Y) {
+        player.y = GROUND_Y;
+        player.vy = 0;
+        player.grounded = true;
+        player.action = "landing";
+        player.actionTimerMs = 0;
+      }
+    }
+
+    if (["low", "mid", "high"].includes(player.action) && player.actionTimerMs > 390) {
+      player.action = "neutral";
+      player.actionTimerMs = 0;
+    }
+
+    if (player.action === "landing" && player.actionTimerMs > 170) {
+      player.action = "neutral";
+      player.actionTimerMs = 0;
+    }
+
+    if (player.magicTimerMs > 0) {
+      player.magicTimerMs -= dt;
+      player.action = "special";
+
+      if (player.actionTimerMs > 250) {
+        for (const enemy of game.enemies) {
+          if (!enemy.dead) defeatEnemy(enemy, false);
+        }
+
+        if (Math.random() < 0.45) {
+          createBurst(W / 2, H / 2, 4);
+        }
+      }
+
+      if (player.magicTimerMs <= 0) {
+        player.action = "neutral";
+        player.actionTimerMs = 0;
+      }
+    }
+
+    testAttackHits();
+
+    game.spawnTimerMs -= dt;
+
+    if (game.spawnTimerMs <= 0) {
+      spawnEnemy();
+      game.spawnTimerMs = (
+        Math.max(700, 1350 - game.elapsedMs * 0.010) +
+        Math.random() * 480
+      ) * game.difficulty.spawnScale;
+    }
+
+    for (const enemy of game.enemies) {
+      if (enemy.dead) continue;
+
+      updateBouncingEnemy(enemy, dt);
+      enemy.x += -enemy.side * enemy.speed * dt / 1000;
+
+      const touchingPlayer = Math.abs(enemy.x - player.x) < 48;
+
+      if (touchingPlayer) {
+        if (player.magicTimerMs > 0) {
+          defeatEnemy(enemy, false);
+        } else if (game.graceMs <= 0 && player.invulnerableMs <= 0) {
+          player.invulnerableMs = game.difficulty.invulnMs;
+          game.hp--;
+          enemy.dead = true;
+
+          createBurst(player.x, player.y - 100, 14);
+          updateHud();
+
+          if (game.hp <= 0) {
+            endGame();
+            return;
+          }
+        }
+      }
+    }
+
+    game.enemies = game.enemies.filter(
+      enemy => !enemy.dead && enemy.x > -180 && enemy.x < W + 180
+    );
+
+    for (const particle of game.particles) {
+      particle.lifeMs -= dt;
+      particle.vy += 650 * dt / 1000;
+      particle.x += particle.vx * dt / 1000;
+      particle.y += particle.vy * dt / 1000;
+    }
+
+    game.particles = game.particles.filter(particle => particle.lifeMs > 0);
+  }
+
+  function endGame() {
+    if (!game.running) return;
+
+    game.running = false;
+    finalScoreEl.textContent = `SCORE ${game.score}`;
+    gameOverOverlay.classList.remove("hidden");
+  }
+
+  function drawBackground() {
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, "#94e1ff");
+    gradient.addColorStop(0.58, "#eefcff");
+    gradient.addColorStop(0.59, "#a4e77e");
+    gradient.addColorStop(1, "#4eb96c");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    for (let i = 0; i < 7; i++) {
+      ctx.beginPath();
+      ctx.arc(120 + i * 190, 120 + (i % 2) * 45, 55, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#c9a9ff";
+    ctx.fillRect(540, 170, 200, 240);
+
+    ctx.fillStyle = "#9a77dd";
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(560 + i * 45, 120 - (i % 2) * 35, 28, 90);
+    }
+  }
+
+  function drawEnemy(enemy) {
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.scale(enemy.side * 0.88, 0.88);
+
+    ctx.fillStyle = enemy.color;
+    ctx.strokeStyle = "rgba(83,48,92,.55)";
+    ctx.lineWidth = 5;
+
+    if (enemy.type === "strawberry") {
+      ctx.beginPath();
+      ctx.arc(0, -48, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#4fa84f";
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 12, -78);
+        ctx.lineTo(i * 12 - 10, -96);
+        ctx.lineTo(i * 12 + 10, -84);
+        ctx.fill();
+      }
+
+    } else if (enemy.type === "melon" || enemy.type === "watermelon") {
+      const radius = enemy.type === "melon" ? 40 : 44;
+
+      ctx.beginPath();
+      ctx.arc(0, -48, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = "#4fa965";
+      ctx.lineWidth = 3;
+      for (let i = -26; i <= 26; i += 13) {
+        ctx.beginPath();
+        ctx.moveTo(i, -82);
+        ctx.lineTo(-i, -14);
+        ctx.stroke();
+      }
+
+    } else if (enemy.type === "grape") {
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3 - row; col++) {
+          ctx.beginPath();
+          ctx.arc((col - (2 - row) / 2) * 26, -90 + row * 26, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+    } else if (enemy.type === "lemon") {
+      ctx.beginPath();
+      ctx.ellipse(0, -52, 44, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(0, -55, 40, 48, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#3a244d";
+    ctx.beginPath();
+    ctx.arc(-13, -55, 6, 0, Math.PI * 2);
+    ctx.arc(13, -55, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function currentPlayerImage() {
+    const player = game.player;
+
+    if (player.action === "jump") return images.jump;
+
+    if (player.action === "jumpAttack") {
+      return player.actionTimerMs < 120
+        ? images.jumpAttackStart
+        : images.jumpAttackHit;
+    }
+
+    if (player.action === "landing") return images.landing;
+
+    if (player.action === "low") {
+      return player.actionTimerMs < 120 || player.actionTimerMs > 260
+        ? images.lowStart
+        : images.lowHit;
+    }
+
+    if (player.action === "mid") {
+      return player.actionTimerMs < 105 || player.actionTimerMs > 250
+        ? images.midStart
+        : images.midHit;
+    }
+
+    if (player.action === "high") {
+      return player.actionTimerMs < 150 || player.actionTimerMs > 295
+        ? images.highStart
+        : images.highHit;
+    }
+
+    return images.neutral;
+  }
+
+  function drawPlayer() {
+    const player = game.player;
+    const image = currentPlayerImage();
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.scale(game.facing, 1);
+
+    if (
+      player.invulnerableMs > 0 &&
+      Math.floor(player.invulnerableMs / 80) % 2 === 0
+    ) {
+      ctx.globalAlpha = 0.35;
+    }
+
+    if (image && image.complete && image.naturalWidth > 0) {
+      ctx.drawImage(image, -170, -310, 340, 340);
+    } else {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-30, -150, 60, 130);
+    }
+
+    ctx.restore();
+  }
+
+  function draw() {
+    drawBackground();
+
+    for (const enemy of game.enemies) {
+      drawEnemy(enemy);
+    }
+
+    drawPlayer();
+
+    for (const particle of game.particles) {
+      ctx.fillStyle = `hsl(${particle.hue} 90% 65%)`;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (game.started && game.graceMs > 0) {
+      ctx.fillStyle = "rgba(255,255,255,.88)";
+      ctx.font = "900 46px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("READY!", W / 2, 95);
+    }
+
+    if (game.player.magicTimerMs > 0) {
+      ctx.fillStyle = "rgba(255,255,255,.50)";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#8d42d8";
+      ctx.font = "900 52px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("RAINBOW MAGIC!", W / 2, 90);
+    }
+
+    loadingTextEl.textContent =
+      loadedImages < totalImages
+        ? `キャラクターを読み込み中 ${loadedImages}/${totalImages}`
+        : "準備完了";
+  }
+
+  let previousTime = performance.now();
+
+  function frame(now) {
+    const dt = Math.min(34, now - previousTime);
+    previousTime = now;
+
+    if (game.started) {
+      update(dt);
+    }
+
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  updateHud();
+  requestAnimationFrame(frame);
+})();
