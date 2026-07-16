@@ -46,7 +46,9 @@
     landing: "landing.webp",
     magicCharge: "magic_charge.webp",
     magicCast: "magic_cast.webp",
-    damage: "damage.webp"
+    damage: "damage.webp",
+    airMagicStart: "air_magic_start.webp",
+    airMagicCast: "air_magic_cast.webp"
   };
 
   const SPRITE_DRAW = {
@@ -56,6 +58,7 @@
     high:       { scale: 1.00, x: 0,  y: 0 },
     jump:       { scale: 0.82, x: 0,  y: -18 },
     jumpAttack: { scale: 0.82, x: 0,  y: -18 },
+    airMagic:   { scale: 0.82, x: 0,  y: -18 },
     landing:    { scale: 0.98, x: 0,  y: 2 },
     special:    { scale: 1.00, x: 0,  y: 0 },
     damage:     { scale: 1.00, x: 0,  y: 0 }
@@ -97,6 +100,8 @@
       facing: 1,
       enemies: [],
       particles: [],
+      airMagicProjectile: null,
+      airMagicExplosion: null,
       player: createPlayer()
     };
   }
@@ -111,7 +116,8 @@
       actionTimerMs: 0,
       attackSerial: 0,
       invulnerableMs: 0,
-      magicTimerMs: 0
+      magicTimerMs: 0,
+      airMagicLaunched: false
     };
   }
 
@@ -132,6 +138,8 @@
       facing: 1,
       enemies: [],
       particles: [],
+      airMagicProjectile: null,
+      airMagicExplosion: null,
       player: createPlayer()
     };
 
@@ -171,9 +179,29 @@
 
     if (key === "attack" && !["special", "damage"].includes(player.action)) {
       if (!player.grounded) {
-        player.action = "jumpAttack";
-        player.actionTimerMs = 0;
-        player.attackSerial++;
+        const downwardMagicRequested =
+          input.down || input.downLeft || input.downRight;
+
+        if (
+          downwardMagicRequested &&
+          game.magic >= 50 &&
+          player.action !== "airMagic"
+        ) {
+          game.magic -= 50;
+          player.action = "airMagic";
+          player.actionTimerMs = 0;
+          player.airMagicLaunched = false;
+          player.vy = 0;
+          player.invulnerableMs = Math.max(player.invulnerableMs, 520);
+          game.airMagicProjectile = null;
+          game.airMagicExplosion = null;
+          createBurst(player.x, player.y - 120, 24);
+          updateHud();
+        } else {
+          player.action = "jumpAttack";
+          player.actionTimerMs = 0;
+          player.attackSerial++;
+        }
       } else if (player.action === "neutral") {
         const lowRequested = input.down || input.downLeft || input.downRight;
         player.action = input.up ? "high" : lowRequested ? "low" : "mid";
@@ -375,7 +403,10 @@
 
     // Holding left/right or a diagonal moves the heroine slightly.
     // Movement is limited to the center area to preserve the two-sided defense style.
-    if (player.magicTimerMs <= 0 && player.action !== "damage") {
+    if (
+      player.magicTimerMs <= 0 &&
+      !["damage", "airMagic"].includes(player.action)
+    ) {
       const moveLeft = input.left || input.downLeft;
       const moveRight = input.right || input.downRight;
       const moveDirection = (moveRight ? 1 : 0) - (moveLeft ? 1 : 0);
@@ -389,8 +420,25 @@
     }
 
     if (!player.grounded) {
-      player.vy += 2150 * dt / 1000;
-      player.y += player.vy * dt / 1000;
+      if (player.action === "airMagic" && player.actionTimerMs < 350) {
+        // Briefly hover while charging and releasing the downward spell.
+        player.vy = 0;
+
+        if (player.actionTimerMs >= 175 && !player.airMagicLaunched) {
+          player.airMagicLaunched = true;
+          game.airMagicProjectile = {
+            x: player.x,
+            y: player.y - 92,
+            vy: 1180,
+            radius: 34,
+            active: true
+          };
+          createBurst(player.x, player.y - 80, 18);
+        }
+      } else {
+        player.vy += 2150 * dt / 1000;
+        player.y += player.vy * dt / 1000;
+      }
 
       if (player.y >= GROUND_Y) {
         player.y = GROUND_Y;
@@ -398,6 +446,7 @@
         player.grounded = true;
         player.action = "landing";
         player.actionTimerMs = 0;
+        player.airMagicLaunched = false;
       }
     }
 
@@ -408,6 +457,11 @@
 
     if (player.action === "landing" && player.actionTimerMs > 170) {
       player.action = "neutral";
+      player.actionTimerMs = 0;
+    }
+
+    if (player.action === "airMagic" && player.actionTimerMs > 390) {
+      player.action = "jump";
       player.actionTimerMs = 0;
     }
 
@@ -436,6 +490,61 @@
       }
     }
 
+    if (game.airMagicProjectile?.active) {
+      const projectile = game.airMagicProjectile;
+      projectile.y += projectile.vy * dt / 1000;
+
+      if (Math.random() < 0.72) {
+        game.particles.push({
+          x: projectile.x + (Math.random() - 0.5) * 26,
+          y: projectile.y + (Math.random() - 0.5) * 20,
+          vx: (Math.random() - 0.5) * 80,
+          vy: -80 - Math.random() * 150,
+          lifeMs: 280 + Math.random() * 260,
+          size: 3 + Math.random() * 7,
+          hue: 185 + Math.random() * 35
+        });
+      }
+
+      if (projectile.y >= GROUND_Y - 10) {
+        projectile.active = false;
+        game.airMagicExplosion = {
+          x: projectile.x,
+          y: GROUND_Y - 10,
+          timerMs: 620,
+          durationMs: 620
+        };
+
+        let defeated = 0;
+        for (const enemy of game.enemies) {
+          if (enemy.dead) continue;
+
+          const horizontallyBelow =
+            Math.abs(enemy.x - projectile.x) <= 205;
+          const withinBlastHeight =
+            Math.abs(enemy.hitY - (GROUND_Y - 115)) <= 300;
+
+          if (horizontallyBelow && withinBlastHeight) {
+            defeatEnemy(enemy, false);
+            defeated++;
+          }
+        }
+
+        createBurst(projectile.x, GROUND_Y - 45, 56);
+        if (defeated > 0) {
+          game.score += Math.max(0, defeated - 1) * 25;
+          updateHud();
+        }
+      }
+    }
+
+    if (game.airMagicExplosion) {
+      game.airMagicExplosion.timerMs -= dt;
+      if (game.airMagicExplosion.timerMs <= 0) {
+        game.airMagicExplosion = null;
+      }
+    }
+
     testAttackHits();
 
     game.spawnTimerMs -= dt;
@@ -457,7 +566,7 @@
       const touchingPlayer = Math.abs(enemy.x - player.x) < 48;
 
       if (touchingPlayer) {
-        if (player.magicTimerMs > 0) {
+        if (player.magicTimerMs > 0 || player.action === "airMagic") {
           defeatEnemy(enemy, false);
         } else if (game.graceMs <= 0 && player.invulnerableMs <= 0) {
           player.invulnerableMs = game.difficulty.invulnMs;
@@ -609,6 +718,12 @@
         : images.jumpAttackHit;
     }
 
+    if (player.action === "airMagic") {
+      return player.actionTimerMs < 175
+        ? images.airMagicStart
+        : images.airMagicCast;
+    }
+
     if (player.action === "special") {
       return player.actionTimerMs < 650
         ? images.magicCharge
@@ -681,6 +796,89 @@
     }
 
     drawPlayer();
+
+    if (game.airMagicProjectile?.active) {
+      const projectile = game.airMagicProjectile;
+      const pulse = 0.75 + Math.sin(game.elapsedMs * 0.025) * 0.18;
+
+      const glow = ctx.createRadialGradient(
+        projectile.x,
+        projectile.y,
+        3,
+        projectile.x,
+        projectile.y,
+        58
+      );
+      glow.addColorStop(0, "rgba(255,255,255,.98)");
+      glow.addColorStop(.28, "rgba(112,225,255,.95)");
+      glow.addColorStop(.65, "rgba(37,127,255,.56)");
+      glow.addColorStop(1, "rgba(37,127,255,0)");
+
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(projectile.x, projectile.y, 58 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(210,250,255,.82)";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(projectile.x, projectile.y, 27 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const beam = ctx.createLinearGradient(
+        projectile.x,
+        projectile.y - 135,
+        projectile.x,
+        projectile.y + 10
+      );
+      beam.addColorStop(0, "rgba(130,225,255,0)");
+      beam.addColorStop(1, "rgba(130,225,255,.60)");
+      ctx.fillStyle = beam;
+      ctx.fillRect(projectile.x - 12, projectile.y - 135, 24, 145);
+    }
+
+    if (game.airMagicExplosion) {
+      const explosion = game.airMagicExplosion;
+      const progress =
+        1 - explosion.timerMs / explosion.durationMs;
+      const radius = 45 + progress * 210;
+      const alpha = Math.max(0, 1 - progress);
+
+      const blast = ctx.createRadialGradient(
+        explosion.x,
+        explosion.y,
+        4,
+        explosion.x,
+        explosion.y,
+        radius
+      );
+      blast.addColorStop(0, `rgba(255,255,255,${.98 * alpha})`);
+      blast.addColorStop(.22, `rgba(103,232,255,${.88 * alpha})`);
+      blast.addColorStop(.58, `rgba(36,113,255,${.50 * alpha})`);
+      blast.addColorStop(1, "rgba(25,70,255,0)");
+
+      ctx.fillStyle = blast;
+      ctx.beginPath();
+      ctx.arc(explosion.x, explosion.y, radius, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      for (let ring = 0; ring < 3; ring++) {
+        ctx.strokeStyle =
+          `rgba(178,244,255,${alpha * (0.75 - ring * 0.18)})`;
+        ctx.lineWidth = 9 - ring * 2;
+        ctx.beginPath();
+        ctx.ellipse(
+          explosion.x,
+          explosion.y,
+          radius * (0.55 + ring * 0.18),
+          radius * (0.14 + ring * 0.035),
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+      }
+    }
 
     for (const particle of game.particles) {
       ctx.fillStyle = `hsl(${particle.hue} 90% 65%)`;
