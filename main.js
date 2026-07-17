@@ -2,6 +2,65 @@
 (() => {
   "use strict";
 
+
+  function installMobileInteractionGuards() {
+    const gameRoot =
+      document.querySelector(".game-shell") ||
+      document.querySelector("#app") ||
+      document.body;
+
+    const shouldBlock = target =>
+      target instanceof Element &&
+      (
+        target.closest("canvas") ||
+        target.closest(".controls") ||
+        target.closest(".dpad") ||
+        target.closest(".actions") ||
+        target.closest("button[data-input]") ||
+        target.closest("#specialButton")
+      );
+
+    for (const eventName of ["contextmenu", "selectstart", "dragstart"]) {
+      document.addEventListener(eventName, event => {
+        if (shouldBlock(event.target)) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+    }
+
+    // Prevent browser scrolling, text selection, translation popups,
+    // long-press callouts, and accidental zoom while operating controls.
+    for (const eventName of ["touchstart", "touchmove", "touchend", "touchcancel"]) {
+      gameRoot.addEventListener(eventName, event => {
+        if (shouldBlock(event.target)) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+    }
+
+    // Safari gesture events.
+    for (const eventName of ["gesturestart", "gesturechange", "gestureend"]) {
+      document.addEventListener(eventName, event => {
+        if (shouldBlock(event.target)) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+    }
+
+    // Avoid native image dragging/callouts on every control element.
+    document.querySelectorAll(
+      "canvas, img, .controls, .dpad, .actions, button[data-input], #specialButton"
+    ).forEach(element => {
+      element.setAttribute("draggable", "false");
+      element.addEventListener("pointerdown", event => {
+        if (event.pointerType === "touch" || event.pointerType === "pen") {
+          event.preventDefault();
+        }
+      }, { passive: false });
+    });
+  }
+
+
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
 
@@ -1011,4 +1070,5 @@
 
   updateHud();
   requestAnimationFrame(frame);
+  installMobileInteractionGuards();
 })();
